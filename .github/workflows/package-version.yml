@@ -6,7 +6,8 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write
+  contents: read
+  deployments: write
   #checks: write # JUnit reports
   #pull-requests: write # JUnit reports
   #packages: write
@@ -36,6 +37,8 @@ jobs:
           echo "::set-output name=sha::$MERGE_SHA" # Set as output for later steps
 
       - name: Create Deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
         # Replace with your actual deployment action or script
         run: |
           DEPLOY_SHA="${{ steps.get_sha.outputs.sha }}"
