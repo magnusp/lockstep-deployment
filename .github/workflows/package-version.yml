@@ -6,8 +6,8 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: read
-  deployments: write
+  contents: write
+  #deployments: write
   #checks: write # JUnit reports
   #pull-requests: write # JUnit reports
   #packages: write
