@@ -1,0 +1,28 @@
+name: 'Merge Check'
+description: 'Check if merges to the default branch are allowed'
+inputs:
+  message:
+    description: 'Merge block message or false to allow merges'
+    required: true
+
+runs:
+  using: "composite"
+
+  steps:
+    - name: Check if merges are allowed
+      # Only run this check this is a PR targeting the default branch, merging to other branches is allowed
+      if: ${{ github.event.pull_request.base.ref == github.event.repository.default_branch && inputs.message != 'false' }}
+      shell: bash
+      run: |
+        echo "This should only run for PRs targeting the default branch, based on the following conditions:"
+        echo "Event: ${{ github.event_name }}"
+        echo "github.event.pull_request.base.ref: ${{ github.event.pull_request.base.ref }}"
+        echo "github.event.repository.default_branch: ${{ github.event.repository.default_branch }}"
+
+        echo "# :warning: Merge stop " >> $GITHUB_STEP_SUMMARY
+        echo "Merges are currently blocked: " >> $GITHUB_STEP_SUMMARY
+        echo "${{ inputs.message }}" >> $GITHUB_STEP_SUMMARY
+
+        echo "::error ::Merges to ${{ github.event.pull_request.base.ref }} are currently blocked"
+        exit 1
+

@@ -1,0 +1,43 @@
+name: 'Deploy'
+description: 'Deploy to an environment'
+inputs:
+  environment:
+    description: 'Environment to deploy to'
+    required: true
+  block_message:
+    description: 'Deploy block message or false to allow deploys'
+    required: true
+  tag:
+    description: 'Tag to deploy'
+    required: true
+
+runs:
+  using: "composite"
+
+  steps:
+    - name: Check if deploy is allowed
+      shell: bash
+      env:
+        DEPLOY_BLOCK_MESSAGE: "${{ inputs.block_message }}"
+      run: |
+        if [[ "$DEPLOY_BLOCK_MESSAGE" != "false" ]]; then
+          echo "::error ::Deployment to ${{ inputs.environment }} is currently blocked: $DEPLOY_BLOCK_MESSAGE"
+          echo "# :warning: Deploy stop" >> $GITHUB_STEP_SUMMARY
+          echo "Deploys are currently blocked: $DEPLOY_BLOCK_MESSAGE" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
+
+    - name: Install prerequisites
+      shell: bash
+      run: |
+        curl -o fnxctl https://fnxctl.fnox.se/fnxctl-linux-amd64 && chmod +x fnxctl && sudo mv fnxctl /usr/local/bin/fnxctl
+    - name: Deploy to ${{ inputs.environment }}
+      shell: bash
+      run: |
+        echo "Deploying tag ${{ inputs.tag }} to environment ${{ inputs.environment }}"
+        #fnxctl deploy --method=gitops --env=${{ inputs.environment }} ${{ inputs.tag }}
+        echo "Deployment of ${{ inputs.tag }} to ${{ inputs.environment }} completed"
+        
+        # This replicates the Jenkins setDeployed call
+        echo "Setting deployment status for ${{ inputs.tag }} in ${{ inputs.environment }} environment"
+

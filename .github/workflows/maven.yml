@@ -1,0 +1,253 @@
+name: Build
+
+on:
+  #push:
+  #  branches:
+  #    - "master"
+  #pull_request:
+  #  branches:
+  #    - "*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  checks: write # JUnit reports
+  pull-requests: write # JUnit reports
+  packages: write
+  actions: write
+  attestations: write # Required for the Docker build-push-action to work
+  id-token: write # Required for the Docker build-push-action to work
+
+env:
+  REGISTRY: ghcr.io
+  # IMAGE_NAME: ${{ github.repository_owner }}/${{ github.event.repository.name }}
+  MAVEN_ARGS: "--batch-mode --no-transfer-progress"
+
+jobs:
+  # Adding a new job to debug ref_name and condition
+  debug-ref:
+    name: Debug Branch Reference
+    runs-on: base-runner-enterprise
+    steps:
+      - name: Debug github.ref_name and condition
+        run: |
+          echo "Current github.ref_name: ${{ github.ref_name }}"
+          echo "Condition evaluation:"
+          if [[ "${{ github.ref_name }}" == "119/merge" || "${{ github.ref_name }}" == "master" ]]; then
+            echo "Condition is TRUE - publish job would run"
+          else
+            echo "Condition is FALSE - publish job would be skipped"
+          fi
+
+  merge-check:
+    name: Merge Check
+    runs-on: base-runner-enterprise
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check if merges are allowed
+        uses: ./.github/actions/merge-check-action
+        with:
+          message: "${{ vars.MERGE_BLOCK_MESSAGE }}"
+
+  # Steps that do not require a build, such as linting the catalog-info.yaml file
+  lint:
+    name: Lint
+    runs-on: base-runner-enterprise
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Backstage Entity
+        uses: RoadieHQ/backstage-entity-validator@v0.5.0
+        with:
+          path: 'catalog-info.yaml'
+
+  # The build job that compiles the code, runs tests, and generates reports
+  build:
+    name: Build
+    runs-on: base-runner-enterprise
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: ./.github/actions/setup-java-action
+      with:
+        java-version: "21"
+
+    - name: Build
+      #      env:
+      #        GITHUB_TOKEN: ${{ secrets.MAVEN_TOKEN }}
+      run: |
+        ./mvnw ${{ env.MAVEN_ARGS }} clean install --file pom.xml -DskipTests
+
+    - name: Test
+      # TODO Stop skipping steps
+      # if: false
+      run: |
+        ./mvnw ${{ env.MAVEN_ARGS }} \
+          --file pom.xml \
+          -Dcucumber.plugin="summary, junit:target/cucumber-junit.xml, message:target/cucumber-message.ndjson" \
+          verify
+
+    - name: Publish Test Report
+      uses: mikepenz/action-junit-report@v5
+      if: success() || failure()
+
+      with:
+        check_name: |
+          JUnit Test Report
+          Cucumber Test Report
+        report_paths: |
+          **/target/surefire-reports/TEST-*.xml
+          **/target/cucumber-junit.xml
+        include_passed: true
+        include_time_in_summary: true
+
+  # The publish job that creates a new version tag, builds images and deploys to GitHub Packages
+  publish:
+    name: Publish
+    runs-on: base-runner-enterprise
+    if: github.ref_name == '120/merge' || github.ref_name == 'master'
+    needs:
+      - build
+      - merge-check
+      - lint
+
+    outputs:
+      next_tag: ${{ steps.git-tag.outputs.next_tag }}
+      next_version: ${{ steps.git-tag.outputs.next_version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for Skip Tag
+        id: check-skip-tag
+        run: |
+          commit_message=$(git log --format=%B -n 1 ${{ github.sha }})
+          if [[ $commit_message == *"#skiptag"* ]]; then
+            echo "skip_version=true" >> $GITHUB_OUTPUT
+            echo "Skipping version creation due to #skiptag in commit message"
+          else
+            echo "skip_version=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create git tag
+        id: git-tag
+        if: steps.check-skip-tag.outputs.skip_version != 'true'
+        run: |
+          set -x
+          git fetch --tags
+          latest_tag=$(git for-each-ref --count=1 --sort=-v:refname --format '%(refname)' refs/tags/v*)
+          tag_version="${latest_tag:11}"
+          echo "SHA: ${{ github.sha }}"
+          # Handle case with no existing tags
+          if [[ -z "$tag_version" ]]; then
+            tag_version=0
+          fi
+          git log -1 --pretty=format:"%s"
+          next_version=$(($tag_version + 1))
+          next_tag="v$next_version"
+          
+          echo "next_version=$next_version" >> $GITHUB_OUTPUT
+          echo "next_tag=$next_tag" >> $GITHUB_OUTPUT
+          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a ${next_tag} -m ${next_tag}
+
+      - name: Push tag
+        env:
+          NEXT_TAG: ${{ steps.git-tag.outputs.next_tag }}
+        if: steps.check-skip-tag.outputs.skip_version != 'true' && github.ref_name == 'master'
+        run: git push origin "$NEXT_TAG"
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: steps.check-skip-tag.outputs.skip_version != 'true' && github.ref_name == 'master'
+        with:
+          tag_name: '${{ steps.git-tag.outputs.next_tag }}'
+          generate_release_notes: true
+
+      - name: Setup Java
+        uses: ./.github/actions/setup-java-action
+        with:
+          java-version: "21"
+#          nexus-deploy-password: '${{ secrets.NEXUS_DEPLOY_PASSWORD }}'
+
+      - name: Submit Dependency Snapshot
+        uses: advanced-security/maven-dependency-submission-action@v5
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.MAVEN_TOKEN }}
+        with:
+          maven-args: "${{ env.MAVEN_ARGS }}"
+
+      # TODO It would be preferable to build everything in the build job and then just deploy the same artifacts here
+      - name: Deploy Maven artifacts
+        #        env:
+        #          GITHUB_TOKEN: ${{ secrets.MAVEN_TOKEN }}
+        run: |
+          echo "::group::Maven"
+          
+          cat ~/.m2/settings.xml
+          
+          ./mvnw ${{ env.MAVEN_ARGS }} --file pom.xml -DskipTests versions:set -DnewVersion=${{ steps.git-tag.outputs.next_version }}
+          
+          # Build all modules before trying to build the Docker image
+          ./mvnw ${{ env.MAVEN_ARGS }} --file pom.xml -DskipTests clean install
+          echo "::endgroup::"
+
+      # This does not use fnxctl to get around the issue with the fnxctl CLI not being available in the GitHub Actions environment,
+      # but it does not really do anything useful either.
+      #- name: Log in to the Container registry
+      #  uses: docker/login-action@v3
+      #  with:
+      #    registry: ${{ env.REGISTRY }}
+      #    username: ${{ github.actor }}
+      #    password: ${{ secrets.GITHUB_TOKEN }}
+
+      # - name: Extract metadata (tags, labels) for Docker
+      #   id: meta
+      #   uses: docker/metadata-action@v5
+      #   with:
+      #     images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      #     # TODO This could be used to figure out how to tag the image in a smarter way, but it is not used yet.
+      #     # Setting tags here lets the action sanitize the tags to avoid issues with casing
+      #     # See https://github.com/orgs/community/discussions/27086
+      #     tags: |
+      #       type=raw,value=latest
+      #       type=raw,value=${{ steps.git-tag.outputs.next_version }}
+
+
+      - name: Build and push image
+        #        env:
+        #          GITHUB_TOKEN: ${{ secrets.MAVEN_TOKEN }}
+        run: |
+          ./mvnw ${{ env.MAVEN_ARGS }} --file pom.xml spring-boot:build-image -pl server
+
+  deploy-dev:
+    name: Deploy to dev
+    runs-on: base-runner-enterprise
+    environment: dev
+    if: github.ref_name == 'master'
+    concurrency:
+      group: deploy-dev
+      cancel-in-progress: true
+    needs:
+      - publish
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        uses: ./.github/actions/deploy-action
+        with:
+          environment: "dev"
+          block_message: "${{ vars.DEPLOY_BLOCK_MESSAGE }}"
+          tag: "${{ steps.git-tag.outputs.next_tag }}"
