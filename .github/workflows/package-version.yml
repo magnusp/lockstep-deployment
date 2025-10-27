@@ -29,16 +29,12 @@ jobs:
     #  FULL_IMAGE_NAME_TAG: ${{ github.repository_owner }}/${{ github.event.repository.name }}:pr-${{ github.event.pull_request.number }}
 
     steps:
-      - name: Get Merge Commit SHA
-        id: get_sha
-        run: |
-          MERGE_SHA="${{ github.event.pull_request.merge_commit_sha }}"
-          echo "Merge Commit SHA is: $MERGE_SHA"
-          echo "::set-output name=sha::$MERGE_SHA" # Set as output for later steps
-
       - name: Create Deployment
         env:
           GH_TOKEN: ${{ github.token }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         # Replace with your actual deployment action or script
         run: |
           DEPLOY_SHA="${{ steps.get_sha.outputs.sha }}"
@@ -47,5 +43,5 @@ jobs:
           --method POST \
           -H "Accept: application/vnd.github+json" \
           -H "X-GitHub-Api-Version: 2022-11-28" \
-          /repos/${{ github.repository_owner }}/${{ github.repository }}/deployments \
+          /repos/$OWNER/$REPO/deployments \
           -f "ref=$DEPLOY_SHA" -f 'description=Deploy requested from PR merge' -f environment='production'
