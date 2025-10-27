@@ -28,33 +28,16 @@ jobs:
   deploy-dev:
     name: Deploy to development environment
     runs-on: "${{ vars.DEFAULT_RUNNER }}"
-
+    env:
+      DEPLOY_TAG: ${{
+        # 1. If triggered by workflow_dispatch, use its input
+        github.event_name == 'workflow_dispatch' && github.event.inputs.tag ||
+        # 2. If triggered by repository_dispatch, safely parse its payload
+        github.event_name == 'repository_dispatch' && fromJson(github.event.client_payload).tag ||
+        # 3. Default (shouldn't be reached if only these two triggers are used)
+        'latest'
+      }}
     steps:
-      - name: Parse and Set Variables (repository_dispatch)
-        if: github.event_name == 'repository_dispatch'
-        id: payload_parser
-        run: |
-          # The client_payload is a string of JSON. We parse it to access properties.
-          # We use environment variables here for simplicity, but you could use outputs.
-          # This example uses bash's built-in jq for robust parsing, though
-          # for simple cases, you could use the GitHub expression directly.
-          
-          # 1. Access the raw JSON string
-          RAW_PAYLOAD='${{ toJSON(github.event.client_payload) }}'
-          
-          # 2. Extract properties and set environment variables
-          TAG=${{ fromJson(github.event.client_payload).tag }}
-          
-          echo "Setting custom environment variable: TAG=$TAG"
-          echo "TAG=$TAG" >> $GITHUB_ENV
-
-      - name: Parse and Set Variables (workflow_dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          TAG='${{ github.event.inputs.tag }}'
-          echo "Setting custom environment variable: TAG=$TAG"
-          echo "TAG=$TAG" >> $GITHUB_ENV
-
       - name: Use Parsed Properties
         run: |
-          echo "Preparing deployment for ${{ env.TAG }}"
+          echo "Preparing deployment for ${{ env.DEPLOY_TAG }}"
