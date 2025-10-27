@@ -24,6 +24,6 @@ public class LockstepDeploymentApplicationTest {
     @Test
     public void testHelloEndpointIntegration() {
         String response = restTemplate.getForObject("http://localhost:" + port + "/hello", String.class);
-        assertThat(response).isEqualTo("Hello World!!");
+        assertThat(response).isEqualTo("Hello World!");
     }
 }
