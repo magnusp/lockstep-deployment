@@ -57,4 +57,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api repos/${{ github.repository }}/dispatches -f event_type=version_created -f client_payload='{"tag":"${{ steps.git-tag.outputs.next_tag }}"}'
+          PAYLOAD_JSON='{"event_type": "version_created", "client_payload": {"tag":"${{ steps.git-tag.outputs.next_tag }}"}}'
+          
+          echo "$PAYLOAD_JSON" | gh api \
+            --method POST \
+            repos/${{ github.repository }}/dispatches \
+            --input -
