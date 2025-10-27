@@ -16,8 +16,8 @@ permissions:
   #id-token: write # Required for the Docker build-push-action to work
 
 jobs:
-  push-tag:
-    name: Push version tag
+  deploy-next-verion:
+    name: Deploy next version
     if: github.event.pull_request.merged == true
     runs-on: "${{ vars.DEFAULT_RUNNER }}"
 
@@ -29,18 +29,22 @@ jobs:
     #  FULL_IMAGE_NAME_TAG: ${{ github.repository_owner }}/${{ github.event.repository.name }}:pr-${{ github.event.pull_request.number }}
 
     steps:
-      - name: Create Deployment
-        env:
-          GH_TOKEN: ${{ github.token }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
-          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
-        # Replace with your actual deployment action or script
+      - name: Create git tag
+        id: git-tag
         run: |
-          echo "Creating deployment based on commit: $DEPLOY_SHA"
-          gh api \
-          --method POST \
-          -H "Accept: application/vnd.github+json" \
-          -H "X-GitHub-Api-Version: 2022-11-28" \
-          /repos/$OWNER/$REPO/deployments \
-          -f "ref=$MERGE_SHA" -f 'description=Deploy requested from PR merge' -f environment='production'
+          echo PR was merged
+          set -x
+          git fetch --tags
+          latest_tag=$(git for-each-ref --count=1 --sort=-v:refname --format '%(refname)' refs/tags/v*)
+          tag_version="${latest_tag:11}"
+          
+          next_version=$(($tag_version + 1))
+          next_tag="v$next_version"
+          
+          echo "next_version=$next_version" >> "$GITHUB_OUTPUT"
+          echo "next_tag=$next_tag" >> "$GITHUB_OUTPUT"
+          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a ${next_tag} -m ${next_tag}
+          git push origin ${next_tag}
