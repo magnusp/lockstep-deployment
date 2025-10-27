@@ -43,7 +43,6 @@ jobs:
           RAW_PAYLOAD='${{ toJSON(github.event.client_payload) }}'
           
           # 2. Extract properties and set environment variables
-          # Note: The ${{ fromJson(...) }} expression is the core parsing mechanism.
           TAG=${{ fromJson(github.event.client_payload).tag }}
           
           echo "Setting custom environment variable: TAG=$TAG"
