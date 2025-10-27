@@ -14,15 +14,10 @@ permissions:
   #attestations: write # Required for the Docker build-push-action to work
   #id-token: write # Required for the Docker build-push-action to work
 
-env:
-  REGISTRY: ghcr.io
-  # IMAGE_NAME: ${{ github.repository_owner }}/${{ github.event.repository.name }}
-  MAVEN_ARGS: "--batch-mode --no-transfer-progress"
-
 jobs:
-  # Steps that do not require a build, such as linting the catalog-info.yaml file
   push-tag:
     name: Push version tag
+    if: github.event.pull_request.merged == true
     runs-on: "${{ vars.DEFAULT_RUNNER }}"
 
     #env:
