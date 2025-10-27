@@ -1,14 +1,13 @@
 name: Deploy
 
 on:
-  push:
-    # Only run for tag pushes
-    tags:
-      - 'v*' # You can change 'v*' to match your tag naming convention (e.g., 'release-*')
-    # Prevent running for branch pushes
-    branches-ignore:
-      - '**'
-  workflow_dispatch: {}
+  repository_dispatch:
+    types: [version_created]
+  workflow_dispatch:
+    inputs:
+        tag:
+          description: 'Tag to deploy'
+          required: true
 
 permissions:
   contents: read
@@ -26,11 +25,37 @@ env:
 
 jobs:
   # Steps that do not require a build, such as linting the catalog-info.yaml file
-  test:
-    name: Lint
+  deploy-dev:
+    name: Deploy to development environment
     runs-on: "${{ vars.DEFAULT_RUNNER }}"
 
     steps:
-      - name: Test
+      - name: Parse and Set Variables (repository_dispatch)
+        if: github.event_name == 'repository_dispatch'
+        id: payload_parser
         run: |
-          echo Test
+          # The client_payload is a string of JSON. We parse it to access properties.
+          # We use environment variables here for simplicity, but you could use outputs.
+          # This example uses bash's built-in jq for robust parsing, though
+          # for simple cases, you could use the GitHub expression directly.
+          
+          # 1. Access the raw JSON string
+          RAW_PAYLOAD='${{ toJSON(github.event.client_payload) }}'
+          
+          # 2. Extract properties and set environment variables
+          # Note: The ${{ fromJson(...) }} expression is the core parsing mechanism.
+          TAG=${{ fromJson(github.event.client_payload).tag }}
+          
+          echo "Setting custom environment variable: TAG=$TAG"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Parse and Set Variables (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          TAG='${{ github.event.inputs.tag }}'
+          echo "Setting custom environment variable: TAG=$TAG"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Use Parsed Properties
+        run: |
+          echo "Preparing deployment for ${{ env.TAG }}"

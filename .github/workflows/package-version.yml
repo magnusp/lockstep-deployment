@@ -52,3 +52,7 @@ jobs:
           git config --local user.name "GitHub Action"
           git tag -a ${next_tag} -m ${next_tag}
           git push origin ${next_tag}
+
+      - name: Create repository_dispatch for new tag
+        run: |
+          gh api repos/${{ github.repository }}/dispatches -f event_type=version_created -f client_payload="{\"tag\":\"${{ steps.git-tag.outputs.next_tag }}\"}"
