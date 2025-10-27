@@ -9,8 +9,6 @@ on:
     # Triggers only when commits are pushed to the PR
     types: [ opened, synchronize ]
     # Restrict to specific branches (e.g., 'main', 'develop')
-    branches:
-      - 'master'
 
 permissions:
   contents: read
