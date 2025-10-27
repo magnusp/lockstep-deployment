@@ -6,7 +6,8 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write
+  contents: read
+  deployments: write
   #checks: write # JUnit reports
   #pull-requests: write # JUnit reports
   #packages: write
@@ -36,15 +37,15 @@ jobs:
           echo "::set-output name=sha::$MERGE_SHA" # Set as output for later steps
 
       - name: Create Deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
         # Replace with your actual deployment action or script
         run: |
           DEPLOY_SHA="${{ steps.get_sha.outputs.sha }}"
           echo "Creating deployment based on commit: $DEPLOY_SHA"
           gh api \
           --method POST \
-          -H "Accept: application/vnd.github.v3+json" \
-          /repos/${{ github.repository }}/deployments \
-          -f ref=$DEPLOY_SHA \
-          -f environment='production' \
-          -f description='Deployment from PR merge' \
-          -f auto_merge=false
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          /repos/${{ github.repository_owner }}/${{ github.repository }}/deployments \
+          -f "ref=$DEPLOY_SHA" -f 'description=Deploy requested from PR merge' -f environment='production'
