@@ -1,11 +1,12 @@
-name: Package version
+name: PR merge
 on:
   pull_request:
     types:
       - closed
+  workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write
   #checks: write # JUnit reports
   #pull-requests: write # JUnit reports
   #packages: write
@@ -20,12 +21,42 @@ env:
 
 jobs:
   # Steps that do not require a build, such as linting the catalog-info.yaml file
-  test:
-    name: Lint
+  push-tag:
+    name: Push version tag
     runs-on: "${{ vars.DEFAULT_RUNNER }}"
 
+    #env:
+    #  IMAGE_OWNER: ${{ github.repository_owner }}
+    #  IMAGE_REPO: ${{ github.event.repository.name }}
+    #  PR_ID: ${{ github.event.pull_request.number }}
+    #  # Create the full dynamic tag: owner/repo:pr-123
+    #  FULL_IMAGE_NAME_TAG: ${{ github.repository_owner }}/${{ github.event.repository.name }}:pr-${{ github.event.pull_request.number }}
+
     steps:
-      - name: Test
-        if: github.event.pull_request.merged == true
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create git tag
+        id: git-tag
         run: |
-          echo PR was merged
+          set -x
+          git fetch --tags
+          latest_tag=$(git for-each-ref --count=1 --sort=-v:refname --format '%(refname)' refs/tags/v*)
+          tag_version="${latest_tag:11}"
+          
+          next_version=$(($tag_version + 1))
+          next_tag="v$next_version"
+          
+          echo "next_version=$next_version" >> "$GITHUB_OUTPUT"
+          echo "next_tag=$next_tag" >> "$GITHUB_OUTPUT"
+          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a ${next_tag} -m ${next_tag}
+          git push origin ${next_tag}
+
+      #- name: Build and push image
+      #  env:
+      #    NEXT_TAG: ${{ steps.git-tag.outputs.next_tag }}
+      #  run: |
+      #    ./mvnw ${{ env.MAVEN_ARGS }} --file pom.xml spring-boot:build-image -pl server -Dspring-boot.build-image.publish=true -Dspring-boot.build-image.imageName=ghcr.io/$FULL_IMAGE_NAME_TAG

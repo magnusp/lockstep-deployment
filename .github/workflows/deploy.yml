@@ -2,8 +2,12 @@ name: Deploy
 
 on:
   push:
-    branches:
-      - "master"
+    # Only run for tag pushes
+    tags:
+      - 'v*' # You can change 'v*' to match your tag naming convention (e.g., 'release-*')
+    # Prevent running for branch pushes
+    branches-ignore:
+      - '**'
   workflow_dispatch: {}
 
 permissions:
