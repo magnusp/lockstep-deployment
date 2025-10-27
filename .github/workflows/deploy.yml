@@ -29,14 +29,7 @@ jobs:
     name: Deploy to development environment
     runs-on: "${{ vars.DEFAULT_RUNNER }}"
     env:
-      DEPLOY_TAG: ${{
-        # 1. If triggered by workflow_dispatch, use its input
-        github.event_name == 'workflow_dispatch' && github.event.inputs.tag ||
-        # 2. If triggered by repository_dispatch, safely parse its payload
-        github.event_name == 'repository_dispatch' && fromJson(github.event.client_payload).tag ||
-        # 3. Default (shouldn't be reached if only these two triggers are used)
-        'latest'
-      }}
+      DEPLOY_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.event_name == 'repository_dispatch' && fromJson(github.event.client_payload).tag || 'latest' }}
     steps:
       - name: Use Parsed Properties
         run: |
