@@ -2,8 +2,12 @@ name: Deploy
 
 on:
   push:
-    branches:
-      - "master"
+    # Only run for tag pushes
+    tags:
+      - 'v*' # You can change 'v*' to match your tag naming convention (e.g., 'release-*')
+    # Prevent running for branch pushes
+    branches-ignore:
+      - '**'
   workflow_dispatch: {}
 
 permissions:
@@ -24,7 +28,7 @@ jobs:
   # Steps that do not require a build, such as linting the catalog-info.yaml file
   test:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
 
     steps:
       - name: Test

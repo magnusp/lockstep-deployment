@@ -1,4 +1,4 @@
-name: Build
+name: Build (maven)
 
 on:
   #push:
@@ -27,7 +27,7 @@ jobs:
   # Adding a new job to debug ref_name and condition
   debug-ref:
     name: Debug Branch Reference
-    runs-on: base-runner-enterprise
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
     steps:
       - name: Debug github.ref_name and condition
         run: |
@@ -41,7 +41,7 @@ jobs:
 
   merge-check:
     name: Merge Check
-    runs-on: base-runner-enterprise
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
 
     steps:
       - name: Checkout
@@ -55,7 +55,7 @@ jobs:
   # Steps that do not require a build, such as linting the catalog-info.yaml file
   lint:
     name: Lint
-    runs-on: base-runner-enterprise
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
 
     steps:
       - name: Checkout
@@ -69,7 +69,7 @@ jobs:
   # The build job that compiles the code, runs tests, and generates reports
   build:
     name: Build
-    runs-on: base-runner-enterprise
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
 
     steps:
     - uses: actions/checkout@v4
@@ -111,7 +111,7 @@ jobs:
   # The publish job that creates a new version tag, builds images and deploys to GitHub Packages
   publish:
     name: Publish
-    runs-on: base-runner-enterprise
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
     if: github.ref_name == '120/merge' || github.ref_name == 'master'
     needs:
       - build
@@ -234,7 +234,7 @@ jobs:
 
   deploy-dev:
     name: Deploy to dev
-    runs-on: base-runner-enterprise
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
     environment: dev
     if: github.ref_name == 'master'
     concurrency:

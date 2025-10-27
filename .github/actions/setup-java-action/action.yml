@@ -27,16 +27,16 @@ runs:
         # settings-path: ${{ github.workspace }}
 
     # These extra settings are needed to be able to use the Fortnox Nexus repository
-    - uses: s4u/maven-settings-action@v3.1.0
-      with:
-        mirrors: |
-          [
-            {"id": "nexus", "name": "nexus", "mirrorOf": "*", "url": "https://nexus.fnox.se/nexus/content/groups/public"}
-          ]
-        repositories: |
-          [
-            {"id":"central","url":"http://central","snapshots":{"enabled":true},"releases":{"enabled":true}}
-          ]
+#    - uses: s4u/maven-settings-action@v3.1.0
+#      with:
+#        mirrors: |
+#          [
+#            {"id": "nexus", "name": "nexus", "mirrorOf": "*", "url": "https://nexus.fnox.se/nexus/content/groups/public"}
+#          ]
+#        repositories: |
+#          [
+#            {"id":"central","url":"http://central","snapshots":{"enabled":true},"releases":{"enabled":true}}
+#          ]
 #        servers: |
 #          [
 #            {"id": "nexus", "name": "nexus", "username": "deployment", "password": "${{ inputs.nexus-deploy-password }}"}
