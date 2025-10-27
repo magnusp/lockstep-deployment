@@ -29,6 +29,10 @@ jobs:
     #  FULL_IMAGE_NAME_TAG: ${{ github.repository_owner }}/${{ github.event.repository.name }}:pr-${{ github.event.pull_request.number }}
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for tags
       - name: Create git tag
         id: git-tag
         run: |
