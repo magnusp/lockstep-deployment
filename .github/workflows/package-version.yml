@@ -20,7 +20,7 @@ jobs:
             | github.event.pull_request.base.ref | ${{ github.event.pull_request.base.ref }} |
         run: |
           set -x
-          echo $SUMMARY >> $GITHUB_STEP_SUMMARY
+          echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
   deploy-next-verion:
     name: Deploy next version
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
