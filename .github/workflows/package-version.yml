@@ -18,7 +18,7 @@ permissions:
 jobs:
   deploy-next-verion:
     name: Deploy next version
-    if: github.event.pull_request.merged == true # och mot defaultbranchen
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     runs-on: "${{ vars.DEFAULT_RUNNER }}"
 
     #env:
@@ -66,8 +66,7 @@ jobs:
               }
             }
         run: |
-          echo Dispatching 'version_created' event onto
-          echo $PAYLOAD_JSON
+          echo Dispatching 'version_created' event onto $REPO
           
           echo "$PAYLOAD_JSON" | gh api \
             --method POST \
