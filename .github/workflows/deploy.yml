@@ -65,6 +65,7 @@ jobs:
       - name: Use Parsed Properties
         run: |
           echo "Preparing deployment for ${{ env.DEPLOY_TAG }}"
+      - uses: actions/checkout@v4
       - name: Call deploy
         uses: ./.github/actions/deploy-action
         with:
