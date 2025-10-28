@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   repository_dispatch:
-    types: [version_created]
+    types: [version_tag_created]
   workflow_dispatch:
     inputs:
         tag:
