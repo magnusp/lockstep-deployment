@@ -7,17 +7,22 @@ on:
 
 permissions:
   contents: write
-  #deployments: write
-  #checks: write # JUnit reports
-  #pull-requests: write # JUnit reports
-  #packages: write
-  #actions: write
-  #attestations: write # Required for the Docker build-push-action to work
-  #id-token: write # Required for the Docker build-push-action to work
 
 jobs:
-  deploy-next-verion:
-    name: Deploy next version
+  run-check:
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
+    steps:
+      - env:
+          SUMMARY: |
+            | Parameter | Value |
+            | --- | --- |
+            | github.event.pull_request.merged | ${{ github.event.pull_request.merged }} |
+            | github.event.pull_request.base.ref | ${{ github.event.pull_request.base.ref }} |
+        run: |
+          set -x
+          echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
+  tag-next-version:
+    name: Tag next version
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     runs-on: "${{ vars.DEFAULT_RUNNER }}"
 
@@ -33,7 +38,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for tags
-      - name: Create git tag
+      - name: Create and push git tag
         id: git-tag
         run: |
           echo PR was merged
@@ -53,7 +58,7 @@ jobs:
           git tag -a ${next_tag} -m ${next_tag}
           git push origin ${next_tag}
 
-      - name: Create repository_dispatch for new tag
+      - name: Create repository_dispatch for ${{ steps.git-tag.outputs.next_tag }}
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
