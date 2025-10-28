@@ -15,6 +15,7 @@ jobs:
       - env:
           SUMMARY: |
             | Parameter | Value |
+            | --- | --- |
             | github.event.pull_request.merged | ${{ github.event.pull_request.merged }} |
             | github.event.pull_request.base.ref | ${{ github.event.pull_request.base.ref }} |
         run: |
