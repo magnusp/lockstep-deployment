@@ -18,7 +18,7 @@ permissions:
 jobs:
   deploy-next-verion:
     name: Deploy next version
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true # och mot defaultbranchen
     runs-on: "${{ vars.DEFAULT_RUNNER }}"
 
     #env:
@@ -56,10 +56,20 @@ jobs:
       - name: Create repository_dispatch for new tag
         env:
           GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NEXT_TAG: ${{ steps.git-tag.outputs.next_tag }}
         run: |
-          PAYLOAD_JSON='{"event_type": "version_created", "client_payload": {"tag":"${{ steps.git-tag.outputs.next_tag }}"}}'
+          echo Dispatching 'version_created' event onto
+          read -r -d '' PAYLOAD_JSON <<EOF
+          {
+            "event_type": "version_created",
+            "client_payload": {
+              "tag": "$NEXT_TAG"
+            }
+          }
+          EOF
           
           echo "$PAYLOAD_JSON" | gh api \
             --method POST \
-            repos/${{ github.repository }}/dispatches \
+            repos/$REPO/dispatches \
             --input -
