@@ -7,15 +7,19 @@ on:
 
 permissions:
   contents: write
-  #deployments: write
-  #checks: write # JUnit reports
-  #pull-requests: write # JUnit reports
-  #packages: write
-  #actions: write
-  #attestations: write # Required for the Docker build-push-action to work
-  #id-token: write # Required for the Docker build-push-action to work
 
 jobs:
+  run-check:
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
+    steps:
+      - env:
+          SUMMARY: |
+            | Parameter | Value |
+            | github.event.pull_request.merged | ${{ github.event.pull_request.merged }} |
+            | github.event.pull_request.base.ref | ${{ github.event.pull_request.base.ref }} |
+        run: |
+          set -x
+          echo $SUMMARY >> $GITHUB_STEP_SUMMARY
   deploy-next-verion:
     name: Deploy next version
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
