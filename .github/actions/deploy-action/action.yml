@@ -15,22 +15,12 @@ runs:
   using: "composite"
 
   steps:
-    - name: Check if deploy is allowed
-      shell: bash
-      env:
-        DEPLOY_BLOCK_MESSAGE: "${{ inputs.block_message }}"
-      run: |
-        if [[ "$DEPLOY_BLOCK_MESSAGE" != "false" ]]; then
-          echo "::error ::Deployment to ${{ inputs.environment }} is currently blocked: $DEPLOY_BLOCK_MESSAGE"
-          echo "# :warning: Deploy stop" >> $GITHUB_STEP_SUMMARY
-          echo "Deploys are currently blocked: $DEPLOY_BLOCK_MESSAGE" >> $GITHUB_STEP_SUMMARY
-          exit 1
-        fi
-
     - name: Install prerequisites
       shell: bash
       run: |
-        curl -o fnxctl https://fnxctl.fnox.se/fnxctl-linux-amd64 && chmod +x fnxctl && sudo mv fnxctl /usr/local/bin/fnxctl
+        set -x
+        echo Install fnxctl
+        #curl -o fnxctl https://fnxctl.fnox.se/fnxctl-linux-amd64 && chmod +x fnxctl && sudo mv fnxctl /usr/local/bin/fnxctl
     - name: Deploy to ${{ inputs.environment }}
       shell: bash
       run: |

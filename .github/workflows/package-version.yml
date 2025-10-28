@@ -1,4 +1,4 @@
-name: Tag version after merged pull request to default branch
+name: Tag next version
 on:
   pull_request:
     types:
@@ -9,18 +9,6 @@ permissions:
   contents: write
 
 jobs:
-  run-check:
-    runs-on: "${{ vars.DEFAULT_RUNNER }}"
-    steps:
-      - env:
-          SUMMARY: |
-            | Parameter | Value |
-            | --- | --- |
-            | github.event.pull_request.merged | ${{ github.event.pull_request.merged }} |
-            | github.event.pull_request.base.ref | ${{ github.event.pull_request.base.ref }} |
-        run: |
-          set -x
-          echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
   tag-next-version:
     name: Tag next version
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
