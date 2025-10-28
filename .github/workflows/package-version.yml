@@ -1,4 +1,4 @@
-name: PR merge
+name: Tag version after merged pull request to default branch
 on:
   pull_request:
     types:
@@ -59,13 +59,13 @@ jobs:
           REPO: ${{ github.repository }}
           PAYLOAD_JSON: |
             {
-              "event_type": "version_created",
+              "event_type": "version_tag_created",
               "client_payload": {
                 "tag": "${{ steps.git-tag.outputs.next_tag }}"
               }
             }
           SUMMARY: |
-            Dispatched `version_created` event onto `${{ github.repository }}` with tag `${{ steps.git-tag.outputs.next_tag }}`
+            Dispatched `version_tag_created` event onto `${{ github.repository }}` with tag `${{ steps.git-tag.outputs.next_tag }}`
         run: |
           echo "$PAYLOAD_JSON" | gh api \
             --method POST \
