@@ -57,7 +57,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          NEXT_TAG: ${{ steps.git-tag.outputs.next_tag }}
           PAYLOAD_JSON: |
             {
               "event_type": "version_created",
@@ -65,10 +64,11 @@ jobs:
                 "tag": "${{ steps.git-tag.outputs.next_tag }}"
               }
             }
+          SUMMARY: |
+            Dispatched `version_created` event onto `${{ github.repository }}` with tag `${{ steps.git-tag.outputs.next_tag }}`
         run: |
-          echo Dispatching 'version_created' event onto "$REPO" with tag "$NEXT_TAG"
-          
           echo "$PAYLOAD_JSON" | gh api \
             --method POST \
             repos/$REPO/dispatches \
             --input -
+          echo $SUMMARY >> $GITHUB_SUMMARY
