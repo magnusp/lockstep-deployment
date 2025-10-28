@@ -71,4 +71,4 @@ jobs:
             --method POST \
             repos/$REPO/dispatches \
             --input -
-          echo $SUMMARY >> $GITHUB_SUMMARY
+          echo $SUMMARY >> $GITHUB_STEP_SUMMARY
