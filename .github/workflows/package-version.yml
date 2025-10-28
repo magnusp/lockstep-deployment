@@ -66,7 +66,7 @@ jobs:
               }
             }
         run: |
-          echo Dispatching 'version_created' event onto $REPO
+          echo Dispatching 'version_created' event onto "$REPO" with tag "$NEXT_TAG"
           
           echo "$PAYLOAD_JSON" | gh api \
             --method POST \
