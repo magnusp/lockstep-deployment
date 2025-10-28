@@ -58,16 +58,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           NEXT_TAG: ${{ steps.git-tag.outputs.next_tag }}
+          PAYLOAD_JSON: |
+            {
+              "event_type": "version_created",
+              "client_payload": {
+                "tag": "${{ steps.git-tag.outputs.next_tag }}"
+              }
+            }
         run: |
           echo Dispatching 'version_created' event onto
-          read -r -d '' PAYLOAD_JSON <<EOF
-          {
-            "event_type": "version_created",
-            "client_payload": {
-              "tag": "$NEXT_TAG"
-            }
-          }
-          EOF
+          echo $PAYLOAD_JSON
           
           echo "$PAYLOAD_JSON" | gh api \
             --method POST \
