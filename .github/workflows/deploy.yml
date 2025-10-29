@@ -24,51 +24,53 @@ env:
   MAVEN_ARGS: "--batch-mode --no-transfer-progress"
 
 jobs:
-  # Steps that do not require a build, such as linting the catalog-info.yaml file
-  deploy-dev:
-    name: Deploy to development environment
+  extract-version-tag:
     runs-on: "${{ vars.DEFAULT_RUNNER }}"
+    outputs:
+      deploy_tag: ${{ steps.determine_tag.outputs.deploy_tag }}
     steps:
       - name: Determine Deployment Tag
         id: determine_tag
-        shell: bash
         run: |
           # 1. Check if the event is workflow_dispatch
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             TAG="${{ github.event.inputs.tag }}"
-          
+
           # 2. Check if the event is repository_dispatch
           elif [ "${{ github.event_name }}" == "repository_dispatch" ]; then
-          
+
             # Extract the client_payload string safely
             PAYLOAD_JSON='${{ toJSON(github.event.client_payload) }}'
-          
+
             # Use jq to parse the 'tag' property from the JSON string.
             # We use 'jq -r' to get the raw string value.
             TAG=$(echo "$PAYLOAD_JSON" | jq -r '.tag')
-          
+
             # Fallback if jq parsing fails or the 'tag' is empty
             if [ -z "$TAG" ] || [ "$TAG" == "null" ]; then
               echo "::warning::repository_dispatch payload missing 'tag'. Falling back to 'latest'."
               TAG="latest"
             fi
-          
+
           # 3. Default (if triggered by push, pull_request, etc., but only if they are enabled)
           else
-            echo "::warning::Event '${{ github.event_name }}' not explicitly handled. Falling back to 'latest'."
-            TAG="latest"
+            echo "::error::Event '${{ github.event_name }}' not explicitly handled."
+            exit 1
           fi
-          
+
           # Output the determined tag as a workflow environment variable
-          echo "Setting DEPLOY_TAG=${TAG}"
-          echo "DEPLOY_TAG=$TAG" >> $GITHUB_ENV
-      - name: Use Parsed Properties
-        run: |
-          echo "Preparing deployment for ${{ env.DEPLOY_TAG }}"
+          echo "Setting deploy_tag=${TAG}"
+          echo "deploy_tag=$TAG" >> $GITHUB_OUTPUT
+
+  deploy-dev:
+    name: Deploy to development environment
+    needs: extract-version-tag
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
+    steps:
       - uses: actions/checkout@v4
       - name: Call deploy
         uses: ./.github/actions/deploy-action
         with:
           environment: production
           block_message: false
-          tag: ${{ env.DEPLOY_TAG }}
+          tag: ${{ needs.extract-version-tag.outputs.deploy_tag }}
