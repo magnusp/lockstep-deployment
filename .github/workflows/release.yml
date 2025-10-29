@@ -166,7 +166,7 @@ jobs:
           
           ./mvnw ${{ env.MAVEN_ARGS }} --file pom.xml \
             -DskipTests \
-            -Dspring-boot.build-image.imageName=ghcr.io/magnusp/lockstep-deployment/lockstep-deployment
+            -Dspring-boot.build-image.imageName=ghcr.io/magnusp/lockstep-deployment/lockstep-deployment \
             -Dspring-boot.build-image.publish=true \
             spring-boot:build-image -pl server
           echo "::endgroup::"
