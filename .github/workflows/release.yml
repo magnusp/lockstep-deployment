@@ -4,7 +4,7 @@ on:
     branches:
       - main
 env:
-  REPOSITORY_DEFAULT_BRANCH: main
+  MAVEN_ARGS: "--batch-mode --no-transfer-progress"
 
 jobs:
   lint:
