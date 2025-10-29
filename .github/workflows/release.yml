@@ -102,7 +102,7 @@ jobs:
   # The publish job that creates a new version tag, builds images and deploys to GitHub Packages
   publish:
     name: Publish
-    if: needs.publish-pre-check.outputs.should_publish == true
+    if: needs.publish-pre-check.outputs.should_publish == 'true'
     runs-on: "${{ vars.DEFAULT_RUNNER }}"
     needs:
       - lint
