@@ -28,7 +28,9 @@ jobs:
   build:
     name: Build
     runs-on: "${{ vars.DEFAULT_RUNNER }}"
-
+    permissions:
+      checks: write # JUnit reports
+      pull-requests: write # JUnit reports
     steps:
       - uses: actions/checkout@v4
 
