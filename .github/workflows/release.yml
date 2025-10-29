@@ -165,8 +165,6 @@ jobs:
         #        env:
         #          GITHUB_TOKEN: ${{ secrets.MAVEN_TOKEN }}
         run: |
-          echo "::group::Maven"
-          
           ./mvnw ${{ env.MAVEN_ARGS }} --file pom.xml -DskipTests versions:set -DnewVersion=${{ steps.git-tag.outputs.next_version }}
           
           ./mvnw ${{ env.MAVEN_ARGS }} --file pom.xml \
@@ -174,7 +172,6 @@ jobs:
             -Dspring-boot.build-image.imageName=ghcr.io/magnusp/lockstep-deployment/lockstep-deployment \
             -Dspring-boot.build-image.publish=true \
             spring-boot:build-image
-          echo "::endgroup::"
 
       - name: Push tag
         env:
