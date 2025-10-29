@@ -62,6 +62,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Setup Java
         uses: ./.github/actions/setup-java-action
         with:
@@ -83,6 +85,9 @@ jobs:
       should_publish: ${{ steps.check-skip-tag.skip_version == false }}
 
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Check for Skip Tag commit
         id: check-skip-tag
         run: |
@@ -147,7 +152,6 @@ jobs:
 
       # TODO It would be preferable to build everything in the build job and then just deploy the same artifacts here
       - name: Deploy container image
-        if: steps.check-skip-tag.outputs.skip_version != 'true'
         #        env:
         #          GITHUB_TOKEN: ${{ secrets.MAVEN_TOKEN }}
         run: |
