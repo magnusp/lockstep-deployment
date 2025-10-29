@@ -7,18 +7,13 @@ env:
   REPOSITORY_DEFAULT_BRANCH: main
 
 jobs:
-  checkout:
+  lint:
     runs-on: ${{ vars.DEFAULT_RUNNER }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-
-  lint:
-    runs-on: ${{ vars.DEFAULT_RUNNER }}
-    steps:
       - name: Validate Backstage Entity
         uses: RoadieHQ/backstage-entity-validator@v0.5.0
         if: ${{ hashFiles('catalog-info.yaml') != '' }} # Only validate if the file exists
