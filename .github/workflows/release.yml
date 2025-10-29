@@ -165,6 +165,7 @@ jobs:
         #        env:
         #          GITHUB_TOKEN: ${{ secrets.MAVEN_TOKEN }}
         run: |
+          echo "::group::spring-boot:build-image"
           ./mvnw ${{ env.MAVEN_ARGS }} --file pom.xml -DskipTests versions:set -DnewVersion=${{ steps.git-tag.outputs.next_version }}
           
           ./mvnw ${{ env.MAVEN_ARGS }} --file pom.xml \
@@ -172,18 +173,7 @@ jobs:
             -Dspring-boot.build-image.imageName=ghcr.io/magnusp/lockstep-deployment/lockstep-deployment \
             -Dspring-boot.build-image.publish=true \
             spring-boot:build-image
-
-      - name: Build and export
-        uses: docker/build-push-action@v6
-        with:
-          tags: ghcr.io/magnusp/lockstep-deployment/lockstep-deployment:${{ steps.git-tag.outputs.next_version }}
-          outputs: type=docker,dest=${{ runner.temp }}/myimage.tar
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: myimage
-          path: ${{ runner.temp }}/myimage.tar
+          echo "::endgroup::"
 
       - name: Push tag
         env:
