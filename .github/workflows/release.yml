@@ -116,7 +116,6 @@ jobs:
     steps:
       - name: Create git tag
         id: git-tag
-        if: steps.check-skip-tag.outputs.skip_version != 'true'
         run: |
           set -x
           git fetch --tags
@@ -168,7 +167,6 @@ jobs:
 
       - name: Release
         uses: softprops/action-gh-release@v2
-        if: steps.check-skip-tag.outputs.skip_version != 'true'
         with:
           tag_name: '${{ steps.git-tag.outputs.next_tag }}'
           generate_release_notes: true
