@@ -4,6 +4,7 @@ on:
     branches:
       - main
 env:
+  REGISTRY: ghcr.io
   MAVEN_ARGS: "--batch-mode --no-transfer-progress"
 
 jobs:
@@ -150,6 +151,14 @@ jobs:
         with:
           java-version: "21"
       #          nexus-deploy-password: '${{ secrets.NEXUS_DEPLOY_PASSWORD }}'
+
+      - name: Conditionally log in to the Github Container registry
+        if: env.REGISTRY == 'ghcr.io'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # TODO It would be preferable to build everything in the build job and then just deploy the same artifacts here
       - name: Deploy container image
