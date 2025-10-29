@@ -143,11 +143,7 @@ jobs:
           git config --local user.name "GitHub Action"
           git tag -a ${next_tag} -m ${next_tag}
 
-      - name: Push tag
-        env:
-          NEXT_TAG: ${{ steps.git-tag.outputs.next_tag }}
-        if: steps.check-skip-tag.outputs.skip_version != 'true'
-        run: git push origin "$NEXT_TAG"
+      
 
       - name: Setup Java
         uses: ./.github/actions/setup-java-action
@@ -168,8 +164,14 @@ jobs:
             -DskipTests \
             -Dspring-boot.build-image.imageName=ghcr.io/magnusp/lockstep-deployment/lockstep-deployment \
             -Dspring-boot.build-image.publish=true \
-            spring-boot:build-image -pl server
+            spring-boot:build-image
           echo "::endgroup::"
+
+      - name: Push tag
+        env:
+          NEXT_TAG: ${{ steps.git-tag.outputs.next_tag }}
+        if: steps.check-skip-tag.outputs.skip_version != 'true'
+        run: git push origin "$NEXT_TAG"
 
       - name: Release
         uses: softprops/action-gh-release@v2
