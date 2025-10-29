@@ -1,14 +1,8 @@
 name: PR Build
 
 on:
-  # 1. Manual Dispatch
-  workflow_dispatch: { }
-
-  # 2. Pull Request Commit Push
   pull_request:
-    # Triggers only when commits are pushed to the PR
     types: [ opened, synchronize ]
-    # Restrict to specific branches (e.g., 'main', 'develop')
 
 permissions:
   contents: read
@@ -16,7 +10,6 @@ permissions:
   pull-requests: write # JUnit reports
 
 env:
-  REGISTRY: ghcr.io
   MAVEN_ARGS: "--batch-mode --no-transfer-progress"
 
 jobs:
@@ -31,7 +24,7 @@ jobs:
 
       - name: Validate Backstage Entity
         uses: RoadieHQ/backstage-entity-validator@v0.5.0
-        if: ${{ hashFiles('catalog-info.yamlz') != '' }}
+        if: ${{ hashFiles('catalog-info.yaml') != '' }} # Only validate if the file exists
         with:
           path: 'catalog-info.yaml'
 
