@@ -173,6 +173,18 @@ jobs:
             -Dspring-boot.build-image.publish=true \
             spring-boot:build-image
 
+      - name: Build and export
+        uses: docker/build-push-action@v6
+        with:
+          tags: ghcr.io/magnusp/lockstep-deployment/lockstep-deployment:${{ steps.git-tag.outputs.next_version }}
+          outputs: type=docker,dest=${{ runner.temp }}/myimage.tar
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: myimage
+          path: ${{ runner.temp }}/myimage.tar
+
       - name: Push tag
         env:
           NEXT_TAG: ${{ steps.git-tag.outputs.next_tag }}
