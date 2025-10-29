@@ -1,0 +1,194 @@
+name: Release version (commits pushed to default branch)
+on:
+  push:
+    branches:
+      - main
+env:
+  REPOSITORY_DEFAULT_BRANCH: main
+
+jobs:
+  checkout:
+    runs-on: ${{ vars.DEFAULT_RUNNER }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+
+  lint:
+    runs-on: ${{ vars.DEFAULT_RUNNER }}
+    steps:
+      - name: Validate Backstage Entity
+        uses: RoadieHQ/backstage-entity-validator@v0.5.0
+        if: ${{ hashFiles('catalog-info.yaml') != '' }} # Only validate if the file exists
+        with:
+          path: 'catalog-info.yaml'
+  # The build job that compiles the code, runs tests, and generates reports
+  build:
+    name: Build
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: ./.github/actions/setup-java-action
+        with:
+          java-version: "21"
+
+      - name: Build and verify with Maven
+        run: |
+          ./mvnw ${{ env.MAVEN_ARGS }} \
+            --file pom.xml \
+            -Dcucumber.plugin="summary, junit:target/cucumber-junit.xml, message:target/cucumber-message.ndjson" \
+            clean verify
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: success() || failure()
+
+        with:
+          check_name: |
+            JUnit Test Report
+            Cucumber Test Report
+          report_paths: |
+            **/target/surefire-reports/TEST-*.xml
+            **/target/cucumber-junit.xml
+          include_passed: true
+          include_time_in_summary: true
+
+  advanced-security:
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
+    needs:
+      - lint
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Java
+        uses: ./.github/actions/setup-java-action
+        with:
+          java-version: "21"
+      - name: Submit Dependency Snapshot
+        uses: advanced-security/maven-dependency-submission-action@v5
+        #        env:
+        #          GITHUB_TOKEN: ${{ secrets.MAVEN_TOKEN }}
+        with:
+          maven-args: "${{ env.MAVEN_ARGS }}"
+
+  publish-pre-check:
+    name: Check preconditions for publishing a release
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
+    needs:
+      - lint
+      - build
+    outputs:
+      should_publish: ${{ steps.check-skip-tag.skip_version == false }}
+
+    steps:
+      - name: Check for Skip Tag commit
+        id: check-skip-tag
+        run: |
+          commit_message=$(git log --format=%B -n 1 ${{ github.sha }})
+          if [[ $commit_message == *"#skiptag"* ]]; then
+            echo "skip_version=true" >> $GITHUB_OUTPUT
+            echo "Skipping version creation due to #skiptag in commit message"
+          else
+            echo "skip_version=false" >> $GITHUB_OUTPUT
+          fi
+
+  # The publish job that creates a new version tag, builds images and deploys to GitHub Packages
+  publish:
+    name: Publish
+    if: needs.publish-pre-check.outputs.should_publish == true
+    runs-on: "${{ vars.DEFAULT_RUNNER }}"
+    needs:
+      - lint
+      - build
+      - publish-pre-check
+
+    outputs:
+      next_tag: ${{ steps.git-tag.outputs.next_tag }}
+      next_version: ${{ steps.git-tag.outputs.next_version }}
+
+    steps:
+      - name: Create git tag
+        id: git-tag
+        if: steps.check-skip-tag.outputs.skip_version != 'true'
+        run: |
+          set -x
+          git fetch --tags
+          latest_tag=$(git for-each-ref --count=1 --sort=-v:refname --format '%(refname)' refs/tags/v*)
+          tag_version="${latest_tag:11}"
+          echo "SHA: ${{ github.sha }}"
+          # Handle case with no existing tags
+          if [[ -z "$tag_version" ]]; then
+            tag_version=0
+          fi
+          git log -1 --pretty=format:"%s"
+          next_version=$(($tag_version + 1))
+          next_tag="v$next_version"
+          
+          echo "next_version=$next_version" >> $GITHUB_OUTPUT
+          echo "next_tag=$next_tag" >> $GITHUB_OUTPUT
+          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a ${next_tag} -m ${next_tag}
+
+      - name: Push tag
+        env:
+          NEXT_TAG: ${{ steps.git-tag.outputs.next_tag }}
+        if: steps.check-skip-tag.outputs.skip_version != 'true'
+        run: git push origin "$NEXT_TAG"
+
+      - name: Setup Java
+        uses: ./.github/actions/setup-java-action
+        with:
+          java-version: "21"
+      #          nexus-deploy-password: '${{ secrets.NEXUS_DEPLOY_PASSWORD }}'
+
+      # TODO It would be preferable to build everything in the build job and then just deploy the same artifacts here
+      - name: Deploy container image
+        if: steps.check-skip-tag.outputs.skip_version != 'true'
+        #        env:
+        #          GITHUB_TOKEN: ${{ secrets.MAVEN_TOKEN }}
+        run: |
+          echo "::group::Maven"
+          
+          ./mvnw ${{ env.MAVEN_ARGS }} --file pom.xml -DskipTests versions:set -DnewVersion=${{ steps.git-tag.outputs.next_version }}
+          
+          ./mvnw ${{ env.MAVEN_ARGS }} --file pom.xml \
+            -DskipTests \
+            -Dspring-boot.build-image.imageName=ghcr.io/magnusp/lockstep-deployment/lockstep-deployment
+            -Dspring-boot.build-image.publish=true \
+            spring-boot:build-image -pl server
+          echo "::endgroup::"
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: steps.check-skip-tag.outputs.skip_version != 'true'
+        with:
+          tag_name: '${{ steps.git-tag.outputs.next_tag }}'
+          generate_release_notes: true
+
+      - name: Create repository_dispatch for ${{ steps.git-tag.outputs.next_tag }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PAYLOAD_JSON: |
+            {
+              "event_type": "version_tag_created",
+              "client_payload": {
+                "tag": "${{ steps.git-tag.outputs.next_tag }}",
+                "image": "ghcr.io/magnusp/lockstep-deployment/lockstep-deployment:${{ steps.git-tag.outputs.next_tag }}"
+              }
+            }
+          SUMMARY: |
+            Dispatched `version_tag_created` event onto `${{ github.repository }}` with tag `${{ steps.git-tag.outputs.next_tag }}`
+        run: |
+          echo "$PAYLOAD_JSON" | gh api \
+            --method POST \
+            repos/$REPO/dispatches \
+            --input -
+          echo $SUMMARY >> $GITHUB_STEP_SUMMARY
